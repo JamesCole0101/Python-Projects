@@ -6,4 +6,5 @@
   #Dividends
 
 
-![image](https://github.com/user-attachments/assets/d2988985-4102-47a5-8406-f8fc09d70b47)
+![image](https://github.com/user-attachments/assets/1f3d2ef6-068a-4eb4-a5a9-7149015748f5)
+

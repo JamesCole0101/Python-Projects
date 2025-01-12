@@ -1,0 +1,149 @@
+import random
+from collections import deque
+import matplotlib.pyplot as plt
+
+#Simulting exchanges for apple stock
+class Exchange:
+    def __init__(self, name, starting_price=150.0, price_volatility=2.0):
+        self.name = name
+        self.order_book = {'bid': deque(), 'ask': deque()}
+        self.price = starting_price
+        self.starting_price = starting_price
+        self.price_volatility = price_volatility
+        self.balance = {'USD': 10000.0, 'AAPL': 100}
+
+    def order_book_gen(self):
+        self.order_book['Bid'] = deque(
+            sorted([(self.price - random.uniform(0.5, 5), random.randint(10, 50)) for _ in range(5)], reverse=True)
+
+        )
+        self.order_book['Ask'] = deque(
+            sorted([(self.price + random.uniform(0.5, 5), random.randint(10, 50)) for _ in range(5)])
+
+        )
+
+    def price_updates(self):
+        volatility = self.price * 0.02
+        self.price += random.uniform(-volatility, volatility)
+        self.price += (self.starting_price - self.price) * 0.1
+        self.price = max(1, min(self.price, 200))
+        self.price += random.uniform(-self.price_volatility, self.price_volatility)
+        self.price = max(1, self.price)
+        self.order_book_gen()
+
+    def correlated_price_update(self, other_exchange_price):
+        spread = random.uniform(-5, 5)
+        self.price = other_exchange_price + spread
+        self.price = max(1, min(self.price, 200))
+        self.order_book_gen()
+
+    def place_order(self, order_type, price, quantity):
+        if order_type == "buy":
+            total_cost = price * quantity
+            if self.balance['USD'] >= total_cost:
+                self.balance['USD'] -= total_cost
+                self.balance['AAPL'] += quantity
+            else:
+                print(f"[{self.name}] Insufficinet funds to complete buy order of {quantity}")
+
+        elif order_type == "sell":
+            if self.balance['AAPL'] >= quantity:
+                total_revenue = price * quantity
+                self.balance['USD'] += total_revenue
+                self.balance['AAPL'] -= quantity
+            else:
+                print(f"[{self.name}] Insufficinet AAPL to complete sell order of {quantity}")
+
+    def get_order_book(self):
+        return self.order_book
+
+    def get_price(self):
+        return self.price
+
+    def get_balance(self):
+        return self.balance
+
+
+
+class ArbitrageAlgo:
+    def __init__(self, exchange_1, exchange_2, transaction_fee=0.001):
+        self.exchange_1 = exchange_1
+        self.exchange_2 = exchange_2
+        self.transaction_fee = transaction_fee
+
+    def calculate_arbitrage_trade(self):
+        price_1 = self.exchange_1.get_price()
+        price_2 = self.exchange_2.get_price()
+
+        if (price_2 - price_1) > (price_1 * self.transaction_fee):
+            return "buy_exchange1_sell_exchange2", price_1, price_2
+
+
+        if (price_1 - price_2) > (price_2 * self.transaction_fee):
+            return "buy_exchange2_sell_exchange1", price_2, price_1
+
+        return None
+
+    def execute_trade(self):
+        opportunity = self.calculate_arbitrage_trade()
+
+        if opportunity:
+             trade_type, buy_price, sell_price = opportunity
+             print(f"Arbitrage opportunity detected: {trade_type}")
+
+             quantity = 10
+
+             if trade_type ==  "buy_exchange1_sell_exchange2":
+                 self.exchange_1.place_order("buy", buy_price, quantity)
+                 self.exchange_2.place_order("sell", sell_price, quantity)
+             elif trade_type == "buy_exchange2_sell_exchange1":
+                 self.exchange_2.place_order("buy", buy_price, quantity)
+                 self.exchange_1.place_order("sell", sell_price, quantity)
+
+             print(f"Trade Executed {trade_type}, Quantity: {quantity} shares")
+        else:
+            print("No arbitrage opportunity detected.")
+
+exchange_a = Exchange(name="Exchange A")
+exchange_b = Exchange(name="Exchange B")
+algo = ArbitrageAlgo(exchange_1=exchange_a, exchange_2=exchange_b)
+prices_a = []
+prices_b = []
+total_returns = []
+for cycle in range(50):
+    print(f"\nCycle: {cycle+1}")
+
+    exchange_a.price_updates()
+    exchange_b.correlated_price_update(exchange_a.get_price())
+    print(f"{exchange_a.name} Price: {exchange_a.get_price():.2f}")
+    print(f"{exchange_b.name} Price: {exchange_b.get_price():.2f}")
+    price_a = exchange_a.get_price()
+    price_b = exchange_b.get_price()
+    prices_a.append(exchange_a.get_price())
+    prices_b.append(exchange_b.get_price())
+    algo.execute_trade()
+    print(f"Balance: {exchange_a.get_balance()}")
+    print(f"Balance: {exchange_b.get_balance()}")
+    total_return = exchange_a.get_balance()['USD'] - exchange_a.starting_price + exchange_b.get_balance()['USD'] - exchange_b.starting_price
+    print(f"Total returns: {total_return}")
+    total_returns.append(total_return)
+fig, ax = plt.subplots(figsize=(12,8))
+plt.subplot(2,1,1)
+plt.plot(prices_a, label="Exchange A Price")
+plt.plot(prices_b, label="Exchange B Price", linestyle='--')
+plt.title("AAPL Stock Prices on Exchange A and B")
+plt.xlabel("Simulation Cycle")
+plt.ylabel("Price (USD)")
+plt.legend()
+plt.grid(True)
+
+plt.subplot(2,1,2)
+plt.plot(total_returns, label="Total Returns", color="green")
+plt.title("Total Returns Over Time")
+plt.xlabel("Simulation Cycle")
+plt.ylabel("Total Returns (USD)")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.legend()
+plt.show()
